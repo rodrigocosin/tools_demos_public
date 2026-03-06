@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 80" fill="none">
+  <!-- OC icon: overlapping O and C rings -->
+  <!-- O ring -->
+  <circle cx="28" cy="40" r="20" fill="none" stroke="#1BBCBE" stroke-width="6"/>
+  <!-- C ring (partial circle, open on right) -->
+  <path d="M 54 22 A 20 20 0 1 0 54 58" fill="none" stroke="#1BBCBE" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- Text: oncoclinicas -->
+  <!-- onco -->
+  <text x="80" y="51" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="400" letter-spacing="1" fill="#888888">onco</text>
+  <!-- c (teal) -->
+  <text x="165" y="51" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="400" letter-spacing="1" fill="#1BBCBE">c</text>
+  <!-- linicas -->
+  <text x="182" y="51" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="400" letter-spacing="1" fill="#888888">línicas</text>
+</svg>
