@@ -2,6 +2,18 @@ import { useEffect, useRef, useState } from 'react'
 import { DatabricksDashboard } from '@databricks/aibi-client'
 import LoadingSpinner from './LoadingSpinner'
 
+interface DashboardConfig {
+  instanceUrl: string
+  workspaceId: string
+  dashboardId: string
+}
+
+async function fetchDashboardConfig(): Promise<DashboardConfig> {
+  const r = await fetch('/api/dashboard-token')
+  if (!r.ok) throw new Error(`Erro ao obter configuração: ${r.status}`)
+  return r.json()
+}
+
 export default function DatabricksDashboardEmbed() {
   const containerRef = useRef<HTMLDivElement>(null)
   const dashboardRef = useRef<DatabricksDashboard | null>(null)
@@ -11,20 +23,17 @@ export default function DatabricksDashboardEmbed() {
   useEffect(() => {
     let dashboard: DatabricksDashboard | null = null
 
-    fetch('/api/dashboard-token')
-      .then((r) => {
-        if (!r.ok) throw new Error(`Erro ao obter configuração: ${r.status}`)
-        return r.json()
-      })
-      .then(({ instanceUrl, workspaceId, dashboardId }: { instanceUrl: string; workspaceId: string; dashboardId: string }) => {
+    fetchDashboardConfig()
+      .then(({ instanceUrl, workspaceId, dashboardId }) => {
         if (!containerRef.current) return
-        // token is intentionally omitted — the Databricks session cookie handles auth
+
         dashboard = new DatabricksDashboard({
           instanceUrl,
           workspaceId,
           dashboardId,
-          token: undefined,
           container: containerRef.current,
+          // No token — auth via Databricks Apps session cookie
+          token: undefined,
           colorScheme: 'light',
           config: { version: 1 },
         })

@@ -36,7 +36,8 @@ app.include_router(reset_router)
 async def health():
     return {"status": "healthy", "app": "exames-clinicos"}
 
-# Dashboard embed config — token is not passed; the iframe uses the user's Databricks session
+# Dashboard embed config — returns token for the embed SDK
+# Within Databricks Apps the SDK derives a fresh token from the session on each call.
 @app.get("/api/dashboard-token")
 async def dashboard_token():
     from server.config import get_workspace_host
