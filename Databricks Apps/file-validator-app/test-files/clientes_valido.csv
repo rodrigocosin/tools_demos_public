@@ -1,0 +1,11 @@
+nome,idade,email,data_nascimento,ativo,salario
+Ana Silva,30,ana.silva@email.com,1994-05-12,true,4500.00
+Bruno Costa,45,bruno.costa@email.com,1979-11-03,true,8200.50
+Carla Mendes,28,carla.mendes@email.com,1996-03-22,false,3100.00
+Diego Alves,52,diego.alves@email.com,1972-08-15,true,12000.00
+Eduarda Lima,35,eduarda.lima@email.com,1989-01-30,true,5600.75
+Felipe Santos,41,felipe.santos@email.com,1983-07-04,false,7300.00
+Gabriela Rocha,26,gabriela.rocha@email.com,1998-12-18,true,2900.00
+Hugo Ferreira,38,hugo.ferreira@email.com,1986-04-09,true,6800.25
+Isabela Nunes,33,isabela.nunes@email.com,1991-09-27,false,4100.00
+João Pereira,60,joao.pereira@email.com,1964-02-14,true,15000.00

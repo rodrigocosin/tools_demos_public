@@ -1,0 +1,8 @@
+codigo,descricao,preco,quantidade,data_cadastro,ativo
+PROD001,Notebook Dell XPS,5499.90,15,2024-01-10,true
+PROD002,Mouse Logitech MX,-299.00,80,2024-02-05,true
+PROD003,Teclado Mecânico,450.00,15.5,2024-02-20,false
+PROD001,Produto duplicado,100.00,10,2024-03-01,true
+,Sem codigo,200.00,5,2024-03-15,true
+PROD005,Produto OK,1899.00,30,2024-03-15,true
+PROD006,Produto data ruim,599.00,60,2024/99/99,true

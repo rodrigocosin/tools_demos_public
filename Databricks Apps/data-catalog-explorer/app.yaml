@@ -1,0 +1,4 @@
+command:
+  - "bash"
+  - "-c"
+  - "npm install && node server.js"
