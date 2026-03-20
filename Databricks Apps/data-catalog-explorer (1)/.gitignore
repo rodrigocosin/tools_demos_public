@@ -1,6 +1,0 @@
-node_modules/
-.env
-.DS_Store
-.databricks/
-frontend/node_modules/
-npm-debug.log*
