@@ -1,0 +1,15 @@
+command:
+  - "python"
+  - "-m"
+  - "uvicorn"
+  - "app:app"
+  - "--host"
+  - "0.0.0.0"
+  - "--port"
+  - "8000"
+
+env:
+  - name: DATABRICKS_HOST
+    value: fevm-cosin-aws-serverless.cloud.databricks.com
+  - name: WAREHOUSE_ID
+    value: "0c2def7684630e5e"

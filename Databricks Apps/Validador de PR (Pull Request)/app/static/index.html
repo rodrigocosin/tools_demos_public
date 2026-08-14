@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <title>Validador de PRs - Conformidade de Notebooks</title>
+    <style>
+        :root {
+            --bg: #0f1117; --surface: #1a1d27; --surface-hover: #22263a;
+            --border: #2a2e3f; --text: #e1e4ed; --text-muted: #8b90a0;
+            --accent: #4a7dff; --accent-hover: #5e8dff;
+            --error: #ff4d6a; --error-bg: rgba(255,77,106,0.08);
+            --warning: #ffb84d; --warning-bg: rgba(255,184,77,0.08);
+            --ok: #4dff91; --ok-bg: rgba(77,255,145,0.08);
+            --radius: 12px;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+        .container { max-width:960px; margin:0 auto; padding:1.5rem; }
+
+        /* TABS */
+        .tabs { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:1.5rem; }
+        .tab { padding:0.8rem 1.5rem; cursor:pointer; color:var(--text-muted); font-size:0.9rem; font-weight:600; border-bottom:2px solid transparent; margin-bottom:-2px; transition:all 0.15s; }
+        .tab:hover { color:var(--text); }
+        .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+        .tab-content { display:none; }
+        .tab-content.active { display:block; }
+
+        header { text-align:center; margin-bottom:1.5rem; }
+        header h1 { font-size:1.5rem; font-weight:700; margin-bottom:0.3rem; }
+        header p { color:var(--text-muted); font-size:0.85rem; }
+
+        /* UPLOAD */
+        .upload-area { border:2px dashed var(--border); border-radius:var(--radius); padding:2.5rem 2rem; text-align:center; cursor:pointer; transition:all 0.2s; background:var(--surface); }
+        .upload-area:hover,.upload-area.dragover { border-color:var(--accent); background:var(--surface-hover); }
+        .upload-area.processing { border-color:var(--accent); pointer-events:none; opacity:0.7; }
+        .upload-icon { font-size:2.2rem; margin-bottom:0.8rem; display:block; }
+        .upload-area h2 { font-size:1rem; font-weight:600; margin-bottom:0.4rem; }
+        .upload-area p { color:var(--text-muted); font-size:0.8rem; }
+        .file-input { display:none; }
+        .file-badge { display:inline-flex; align-items:center; gap:0.5rem; background:var(--surface-hover); border:1px solid var(--border); border-radius:8px; padding:0.4rem 0.8rem; margin-top:0.8rem; font-size:0.8rem; }
+        .file-badge .remove { cursor:pointer; color:var(--text-muted); font-weight:bold; }
+        .file-badge .remove:hover { color:var(--error); }
+
+        .summary { display:grid; grid-template-columns:repeat(3,1fr); gap:0.8rem; margin:1.2rem 0; }
+        .summary-card { background:var(--surface); border-radius:var(--radius); padding:1rem; text-align:center; border:1px solid var(--border); }
+        .summary-card .count { font-size:1.8rem; font-weight:700; display:block; }
+        .summary-card .label { color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px; }
+        .summary-card.errors .count { color:var(--error); }
+        .summary-card.warnings .count { color:var(--warning); }
+        .summary-card.ok .count { color:var(--ok); }
+
+        .filters { display:flex; gap:0.4rem; margin-bottom:0.8rem; }
+        .filter-btn { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:0.4rem 0.8rem; color:var(--text-muted); font-size:0.75rem; cursor:pointer; transition:all 0.15s; }
+        .filter-btn:hover { border-color:var(--accent); color:var(--text); }
+        .filter-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+        .results { display:none; }
+        .results.visible { display:block; }
+
+        .result-item { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:0.8rem 1rem; margin-bottom:0.5rem; border-left:4px solid transparent; }
+        .result-item.erro { border-left-color:var(--error); background:var(--error-bg); }
+        .result-item.aviso { border-left-color:var(--warning); background:var(--warning-bg); }
+        .result-item.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+        .result-header { display:flex; align-items:center; gap:0.5rem; margin-bottom:0.2rem; }
+        .severity-badge { font-size:0.65rem; font-weight:700; text-transform:uppercase; padding:0.1rem 0.4rem; border-radius:4px; letter-spacing:0.5px; }
+        .severity-badge.erro { background:var(--error); color:#fff; }
+        .severity-badge.aviso { background:var(--warning); color:#000; }
+        .severity-badge.ok { background:var(--ok); color:#000; }
+        .category-tag { font-size:0.7rem; color:var(--text-muted); background:var(--surface-hover); padding:0.1rem 0.4rem; border-radius:4px; }
+        .result-message { font-size:0.85rem; font-weight:500; line-height:1.4; }
+        .result-details { margin-top:0.4rem; font-size:0.75rem; color:var(--text-muted); white-space:pre-wrap; line-height:1.4; background:rgba(0,0,0,0.2); padding:0.5rem 0.7rem; border-radius:6px; }
+
+        .error-banner { background:var(--error-bg); border:1px solid var(--error); border-radius:var(--radius); padding:0.8rem; margin:0.8rem 0; display:none; }
+        .error-banner.visible { display:block; }
+
+        .spinner { display:inline-block; width:16px; height:16px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.6s linear infinite; }
+        @keyframes spin { to { transform:rotate(360deg); } }
+
+        .btn { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:0.5rem 1rem; color:var(--text); font-size:0.8rem; cursor:pointer; transition:all 0.15s; }
+        .btn:hover { border-color:var(--accent); }
+        .btn-primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+        .btn-primary:hover { background:var(--accent-hover); }
+        .btn-danger { color:var(--error); }
+        .btn-danger:hover { border-color:var(--error); }
+        .btn:disabled { opacity:0.5; cursor:not-allowed; }
+
+        .reset-btn { margin-top:1rem; display:none; }
+        .reset-btn.visible { display:inline-block; }
+
+        /* RULES MANAGEMENT */
+        .rules-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; }
+        .rules-header h2 { font-size:1.1rem; }
+
+        .rule-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1rem; margin-bottom:0.6rem; }
+        .rule-card.disabled { opacity:0.5; }
+        .rule-card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem; }
+        .rule-card-title { font-size:0.85rem; font-weight:600; }
+        .rule-card-meta { display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap; margin-bottom:0.3rem; }
+        .rule-card-message { font-size:0.8rem; color:var(--text-muted); }
+        .rule-actions { display:flex; gap:0.3rem; }
+
+        .toggle { position:relative; width:36px; height:20px; cursor:pointer; }
+        .toggle input { display:none; }
+        .toggle-slider { position:absolute; inset:0; background:var(--border); border-radius:10px; transition:0.2s; }
+        .toggle-slider::before { content:''; position:absolute; width:16px; height:16px; left:2px; top:2px; background:#fff; border-radius:50%; transition:0.2s; }
+        .toggle input:checked + .toggle-slider { background:var(--ok); }
+        .toggle input:checked + .toggle-slider::before { transform:translateX(16px); }
+
+        /* FORM */
+        .form-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:100; justify-content:center; align-items:start; padding-top:5vh; }
+        .form-overlay.visible { display:flex; }
+        .form-panel { background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); width:100%; max-width:640px; max-height:85vh; overflow-y:auto; padding:1.5rem; }
+        .form-panel h2 { font-size:1.1rem; margin-bottom:1rem; }
+        .form-group { margin-bottom:1rem; }
+        .form-group label { display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:0.3rem; font-weight:600; }
+        .form-group input, .form-group select, .form-group textarea {
+            width:100%; background:var(--surface); border:1px solid var(--border); border-radius:8px;
+            padding:0.5rem 0.7rem; color:var(--text); font-size:0.85rem; font-family:inherit;
+        }
+        .form-group textarea { resize:vertical; min-height:60px; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline:none; border-color:var(--accent); }
+        .form-actions { display:flex; gap:0.5rem; justify-content:flex-end; margin-top:1.2rem; }
+
+        .preview-card { background:var(--surface); border:1px solid var(--accent); border-radius:var(--radius); padding:1rem; margin-top:1rem; }
+        .preview-card h3 { font-size:0.85rem; color:var(--accent); margin-bottom:0.5rem; }
+        .preview-json { font-family:monospace; font-size:0.75rem; background:rgba(0,0,0,0.3); padding:0.6rem; border-radius:6px; white-space:pre-wrap; max-height:200px; overflow-y:auto; }
+
+        footer { margin-top:2rem; text-align:center; color:var(--text-muted); font-size:0.7rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Validador de PRs</h1>
+            <p>Conformidade de Notebooks Databricks</p>
+        </header>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('validate')">Validar Notebook</div>
+            <div class="tab" onclick="switchTab('rules')">Gerenciar Regras</div>
+        </div>
+
+        <!-- TAB: VALIDAR -->
+        <div id="tab-validate" class="tab-content active">
+            <div id="uploadArea" class="upload-area">
+                <span class="upload-icon">&#128196;</span>
+                <h2>Arraste o notebook aqui ou clique para selecionar</h2>
+                <p>Formatos: .py (Databricks) ou .ipynb (Jupyter) &mdash; Max 5 MB</p>
+                <input type="file" id="fileInput" class="file-input" accept=".py,.ipynb">
+                <div id="fileBadge"></div>
+            </div>
+            <div id="errorBanner" class="error-banner"></div>
+            <div id="results" class="results">
+                <div class="summary" id="summary"></div>
+                <div class="filters" id="filters"></div>
+                <div id="resultsList"></div>
+            </div>
+            <button id="resetBtn" class="btn reset-btn" onclick="resetValidation()">Validar outro notebook</button>
+        </div>
+
+        <!-- TAB: REGRAS -->
+        <div id="tab-rules" class="tab-content">
+            <div class="rules-header">
+                <h2>Regras de Validação</h2>
+                <div style="display:flex;gap:0.4rem">
+                    <button class="btn" onclick="loadRules()">Atualizar</button>
+                    <button class="btn btn-primary" onclick="openCreateForm()">+ Nova Regra</button>
+                </div>
+            </div>
+            <div id="rulesList"></div>
+        </div>
+
+        <!-- MODAL: CRIAR REGRA -->
+        <div id="formOverlay" class="form-overlay">
+            <div class="form-panel">
+                <h2>Nova Regra com Assistente IA</h2>
+
+                <div class="form-group">
+                    <label>Categoria</label>
+                    <select id="fCategory">
+                        <option value="Cabeçalho">Cabeçalho</option>
+                        <option value="Informações Iniciais">Informações Iniciais</option>
+                        <option value="Localização do Notebook">Localização do Notebook</option>
+                        <option value="Nomenclatura de Notebook">Nomenclatura de Notebook</option>
+                        <option value="Nomenclatura de Tabelas">Nomenclatura de Tabelas</option>
+                        <option value="Nomenclatura de Views">Nomenclatura de Views</option>
+                        <option value="Nomenclatura de Campos">Nomenclatura de Campos</option>
+                        <option value="Campos Obrigatórios">Campos Obrigatórios</option>
+                        <option value="Registros Obrigatórios">Registros Obrigatórios</option>
+                        <option value="Descrições">Descrições</option>
+                        <option value="Tagueamento">Tagueamento</option>
+                        <option value="Mascaramento">Mascaramento</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Tipo de Validação</label>
+                    <select id="fFriendlyType">
+                        <option value="deve_conter">Deve conter um texto/padrão</option>
+                        <option value="nao_deve_conter">NÃO deve conter um texto/padrão</option>
+                        <option value="aviso_condicional">Aviso quando encontrar algo</option>
+                        <option value="aviso_composto">Aviso com múltiplas condições</option>
+                        <option value="nome_notebook">Validar nome do notebook</option>
+                        <option value="prefixo_tabela">Validar prefixo de tabela</option>
+                        <option value="prefixo_view">Validar prefixo de view</option>
+                        <option value="prefixo_campo">Validar prefixo de campo</option>
+                        <option value="coluna_obrigatoria">Coluna obrigatória por tipo de tabela</option>
+                        <option value="formato_comment">Formato de descrição (COMMENT)</option>
+                        <option value="valor_tag">Validar valor de tag</option>
+                        <option value="tag_maiuscula">Tags devem ser maiúsculas</option>
+                        <option value="mascaramento">Validar mascaramento</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Descreva a regra em linguagem natural</label>
+                    <textarea id="fDescription" placeholder="Ex: O notebook não pode referenciar o catálogo 3_prd_homolog"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Severidade</label>
+                    <select id="fSeverity">
+                        <option value="erro">Erro</option>
+                        <option value="aviso">Aviso</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Mensagem quando falha</label>
+                    <input type="text" id="fMessageFail" placeholder="Ex: Referência ao catálogo proibido encontrada.">
+                </div>
+
+                <div class="form-group">
+                    <label>Mensagem quando passa (opcional)</label>
+                    <input type="text" id="fMessageOk" placeholder="Ex: Nenhuma referência ao catálogo proibido.">
+                </div>
+
+                <div class="form-group">
+                    <label>Detalhes adicionais (opcional)</label>
+                    <textarea id="fDetails" placeholder="Informações extras exibidas junto ao erro/aviso"></textarea>
+                </div>
+
+                <button class="btn btn-primary" style="width:100%" id="btnGenerate" onclick="generateRule()">
+                    Gerar Regra com IA
+                </button>
+
+                <div id="previewCard" class="preview-card" style="display:none">
+                    <h3>Preview da Regra Gerada</h3>
+                    <div class="rule-card-meta">
+                        <span id="prevType" class="category-tag"></span>
+                        <span id="prevId" class="category-tag"></span>
+                    </div>
+                    <div id="prevParams" class="preview-json"></div>
+                </div>
+
+                <div class="form-actions">
+                    <button class="btn" onclick="closeForm()">Cancelar</button>
+                    <button class="btn btn-primary" id="btnSave" onclick="saveRule()" disabled>Salvar Regra</button>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Validação estática &mdash; alguns critérios requerem verificação manual no DevOps.</p>
+        </footer>
+    </div>
+
+<script>
+// ============= TABS =============
+function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.tab-content#tab-${tab}`).classList.add('active');
+    document.querySelectorAll('.tab')[tab === 'validate' ? 0 : 1].classList.add('active');
+    if (tab === 'rules') loadRules();
+}
+
+// ============= UPLOAD & VALIDATION =============
+const uploadArea = document.getElementById('uploadArea');
+const fileInput = document.getElementById('fileInput');
+const fileBadge = document.getElementById('fileBadge');
+const errorBanner = document.getElementById('errorBanner');
+const resultsDiv = document.getElementById('results');
+const resetBtn = document.getElementById('resetBtn');
+let allResults = [], currentFilter = 'all';
+const ALLOWED_EXT = ['.py', '.ipynb'], MAX_SIZE = 5*1024*1024;
+
+uploadArea.addEventListener('click', () => fileInput.click());
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+uploadArea.addEventListener('drop', e => { e.preventDefault(); uploadArea.classList.remove('dragover'); if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', () => { if(fileInput.files.length) handleFile(fileInput.files[0]); });
+
+function esc(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function showError(m) { errorBanner.textContent=m; errorBanner.classList.add('visible'); }
+function hideError() { errorBanner.classList.remove('visible'); errorBanner.textContent=''; }
+
+function handleFile(file) {
+    hideError();
+    const ext = file.name.substring(file.name.lastIndexOf('.'));
+    if (!ALLOWED_EXT.includes(ext.toLowerCase())) { showError('Formato não suportado.'); return; }
+    if (file.size > MAX_SIZE) { showError('Arquivo excede 5 MB.'); return; }
+    fileBadge.innerHTML = '<div class="file-badge"><span class="spinner"></span><span>Validando '+esc(file.name)+'...</span></div>';
+    uploadArea.classList.add('processing');
+    resultsDiv.classList.remove('visible'); resetBtn.classList.remove('visible');
+    const fd = new FormData(); fd.append('file', file);
+    fetch('/api/validate', {method:'POST', body:fd}).then(r=>r.ok?r.json():r.json().then(e=>{throw e}))
+    .then(data => { displayResults(data, file.name); })
+    .catch(e => { showError(e.detail||'Erro ao validar.'); fileBadge.innerHTML=''; })
+    .finally(() => uploadArea.classList.remove('processing'));
+}
+
+function displayResults(data, fname) {
+    allResults = data.results||[];
+    const s = data.summary||{};
+    document.getElementById('summary').innerHTML = `
+        <div class="summary-card errors"><span class="count">${s.errors||0}</span><span class="label">Erros</span></div>
+        <div class="summary-card warnings"><span class="count">${s.warnings||0}</span><span class="label">Avisos</span></div>
+        <div class="summary-card ok"><span class="count">${s.ok||0}</span><span class="label">OK</span></div>`;
+    const filtersDiv = document.getElementById('filters');
+    filtersDiv.innerHTML = '';
+    [{k:'all',l:`Todos (${allResults.length})`},{k:'erro',l:`Erros (${s.errors||0})`},{k:'aviso',l:`Avisos (${s.warnings||0})`},{k:'ok',l:`OK (${s.ok||0})`}].forEach(f => {
+        const b = document.createElement('button'); b.className='filter-btn'+(f.k==='all'?' active':''); b.textContent=f.l;
+        b.onclick=()=>{ currentFilter=f.k; filtersDiv.querySelectorAll('.filter-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); renderResults(); };
+        filtersDiv.appendChild(b);
+    });
+    currentFilter='all'; renderResults(); resultsDiv.classList.add('visible'); resetBtn.classList.add('visible');
+    fileBadge.innerHTML='<div class="file-badge"><span>'+esc(fname)+'</span><span class="remove" onclick="resetValidation()">&times;</span></div>';
+}
+
+function renderResults() {
+    const list = document.getElementById('resultsList'); list.innerHTML='';
+    const filtered = currentFilter==='all' ? allResults : allResults.filter(r=>r.severity===currentFilter);
+    if (!filtered.length) { list.innerHTML='<p style="color:var(--text-muted);text-align:center;padding:1.5rem">Nenhum resultado.</p>'; return; }
+    filtered.forEach(r => {
+        const d = document.createElement('div'); d.className='result-item '+r.severity;
+        d.innerHTML=`<div class="result-header"><span class="severity-badge ${r.severity}">${r.severity}</span><span class="category-tag">${esc(r.category)}</span></div><div class="result-message">${esc(r.message)}</div>${r.details?'<div class="result-details">'+esc(r.details)+'</div>':''}`;
+        list.appendChild(d);
+    });
+}
+
+function resetValidation() { fileInput.value=''; fileBadge.innerHTML=''; resultsDiv.classList.remove('visible'); resetBtn.classList.remove('visible'); hideError(); allResults=[]; }
+
+// ============= RULES MANAGEMENT =============
+let rulesData = [];
+
+function loadRules() {
+    const list = document.getElementById('rulesList');
+    list.innerHTML = '<p style="text-align:center;padding:1rem"><span class="spinner"></span> Carregando regras...</p>';
+    fetch('/api/rules', {signal: AbortSignal.timeout(45000)})
+    .then(r => {
+        if (!r.ok) return r.text().then(t => { throw new Error(t || 'HTTP ' + r.status); });
+        return r.json();
+    })
+    .then(data => {
+        rulesData = data.rules||[];
+        renderRulesList();
+    })
+    .catch(e => {
+        const msg = e.name === 'TimeoutError' ? 'Timeout - o SQL Warehouse pode estar iniciando. Tente novamente em 1 minuto.'
+            : 'Erro ao carregar regras: ' + (e.message || 'desconhecido');
+        list.innerHTML='<p style="color:var(--error);text-align:center;padding:1rem">'+esc(msg)+'</p><p style="text-align:center"><button class="btn" onclick="loadRules()">Tentar novamente</button></p>';
+    });
+}
+
+function renderRulesList() {
+    const list = document.getElementById('rulesList'); list.innerHTML='';
+    if (!rulesData.length) { list.innerHTML='<p style="color:var(--text-muted);text-align:center;padding:2rem">Nenhuma regra cadastrada.</p>'; return; }
+    rulesData.forEach(r => {
+        const card = document.createElement('div'); card.className='rule-card'+(r.enabled?'':' disabled');
+        card.innerHTML = `
+            <div class="rule-card-header">
+                <span class="rule-card-title">${esc(r.rule_id)}</span>
+                <div class="rule-actions">
+                    <label class="toggle"><input type="checkbox" ${r.enabled?'checked':''} onchange="toggleRule('${esc(r.rule_id)}',this.checked)"><span class="toggle-slider"></span></label>
+                    <button class="btn btn-danger" onclick="deleteRule('${esc(r.rule_id)}')" style="padding:0.3rem 0.5rem;font-size:0.7rem">Excluir</button>
+                </div>
+            </div>
+            <div class="rule-card-meta">
+                <span class="severity-badge ${r.severity}">${r.severity}</span>
+                <span class="category-tag">${esc(r.category)}</span>
+                <span class="category-tag">${esc(r.rule_type)}</span>
+            </div>
+            <div class="rule-card-message">${esc(r.message_fail)}</div>`;
+        list.appendChild(card);
+    });
+}
+
+function toggleRule(id, enabled) {
+    fetch(`/api/rules/${id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({enabled})})
+    .then(r=>{ if(!r.ok) throw r; loadRules(); }).catch(()=>{ alert('Erro ao atualizar regra.'); loadRules(); });
+}
+
+function deleteRule(id) {
+    if (!confirm(`Excluir regra "${id}"?`)) return;
+    fetch(`/api/rules/${id}`, {method:'DELETE'}).then(r=>{ if(!r.ok) throw r; loadRules(); }).catch(()=>alert('Erro ao excluir.'));
+}
+
+// ============= CREATE RULE WITH AI =============
+let generatedRule = null;
+
+function openCreateForm() {
+    generatedRule = null;
+    document.getElementById('formOverlay').classList.add('visible');
+    document.getElementById('previewCard').style.display='none';
+    document.getElementById('btnSave').disabled=true;
+    ['fDescription','fMessageFail','fMessageOk','fDetails'].forEach(id=>document.getElementById(id).value='');
+}
+
+function closeForm() { document.getElementById('formOverlay').classList.remove('visible'); }
+
+function generateRule() {
+    const desc = document.getElementById('fDescription').value.trim();
+    if (!desc) { alert('Preencha a descrição da regra.'); return; }
+
+    const btn = document.getElementById('btnGenerate');
+    btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Gerando com IA...';
+
+    fetch('/api/generate-rule', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+            description: desc,
+            friendly_type: document.getElementById('fFriendlyType').value,
+            category: document.getElementById('fCategory').value,
+        })
+    }).then(r=>r.ok?r.json():r.json().then(e=>{throw e}))
+    .then(data => {
+        generatedRule = data;
+        document.getElementById('prevType').textContent = data.rule_type;
+        document.getElementById('prevId').textContent = data.rule_id;
+        document.getElementById('prevParams').textContent = JSON.stringify(data.params, null, 2);
+        document.getElementById('previewCard').style.display='block';
+        document.getElementById('btnSave').disabled=false;
+    })
+    .catch(e => { alert(e.detail || 'Erro ao gerar regra. Tente novamente.'); })
+    .finally(() => { btn.disabled=false; btn.textContent='Gerar Regra com IA'; });
+}
+
+function saveRule() {
+    if (!generatedRule) return;
+    const msgFail = document.getElementById('fMessageFail').value.trim();
+    if (!msgFail) { alert('Preencha a mensagem quando falha.'); return; }
+
+    const rule = {
+        rule_id: generatedRule.rule_id,
+        rule_type: generatedRule.rule_type,
+        category: document.getElementById('fCategory').value,
+        severity: document.getElementById('fSeverity').value,
+        message_ok: document.getElementById('fMessageOk').value.trim() || null,
+        message_fail: msgFail,
+        details_fail: document.getElementById('fDetails').value.trim() || null,
+        params: generatedRule.params,
+        enabled: true,
+        priority: 200,
+    };
+
+    const btn = document.getElementById('btnSave');
+    btn.disabled=true; btn.textContent='Salvando...';
+
+    fetch('/api/rules', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(rule)})
+    .then(r=>r.ok?r.json():r.json().then(e=>{throw e}))
+    .then(() => { closeForm(); loadRules(); alert('Regra criada com sucesso!'); })
+    .catch(e => alert(e.detail || 'Erro ao salvar.'))
+    .finally(() => { btn.disabled=false; btn.textContent='Salvar Regra'; });
+}
+</script>
+</body>
+</html>

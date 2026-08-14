@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+:root {
+  --oc-teal:        #1BBCBE;
+  --oc-teal-dark:   #148F91;
+  --oc-teal-light:  #E4F7F7;
+  --color-bg:       #F1F4F8;
+  --color-card:     #ffffff;
+  --color-text:     #1C2B3A;
+  --color-muted:    #6B7E8F;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Sidebar — dark navy para o logo teal destacar */
+.sidebar-gradient {
+  background: linear-gradient(180deg, #1E2D3D 0%, #13202E 100%);
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.badge-normal      { background: #D4F0E2; color: #00703A; }
+.badge-alterado    { background: #FEE9CC; color: #C05C00; }
+.badge-critico     { background: #FDDCDA; color: #B91C1C; }
+.badge-pendente    { background: #DBEAFE; color: #1D4ED8; }
+.badge-processando { background: #FEF3C7; color: #92400E; }
+.badge-concluido   { background: #D4F0E2; color: #00703A; }
+.badge-erro        { background: #FDDCDA; color: #B91C1C; }
+
+/* Card hover */
+.card-hover {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.card-hover:hover {
+  box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+  transform: translateY(-1px);
+}

@@ -1,0 +1,16 @@
+command:
+  - "python"
+  - "-m"
+  - "uvicorn"
+  - "app:app"
+  - "--host"
+  - "0.0.0.0"
+  - "--port"
+  - "8000"
+env:
+  - name: SERVING_ENDPOINT
+    value: databricks-meta-llama-3-3-70b-instruct
+  - name: CATALOG
+    value: cosin_aws_serverless_catalog
+  - name: SCHEMA
+    value: exames_clinicos

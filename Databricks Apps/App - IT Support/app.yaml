@@ -1,0 +1,27 @@
+command: ['python', 'app.py']
+env:
+  - name: 'DATABRICKS_WAREHOUSE_ID'
+    value: '0c2def7684630e5e'
+  - name: 'GENIE_SPACE_ID'
+    value: '01f124528653102d8b5ea6443c331153'
+  - name: 'KA_ENDPOINT_NAME'
+    value: 'ka-1a0b7165-endpoint'
+
+resources:
+  - name: 'genie-sala-chamados-it'
+    description: 'Sala Genie - Chamados IT'
+    genie_space:
+      id: '01f124528653102d8b5ea6443c331153'
+      permission: 'CAN_USE'
+
+  - name: 'ka-it-support'
+    description: 'Knowledge Agent - IT Support norms'
+    serving_endpoint:
+      name: 'ka-1a0b7165-endpoint'
+      permission: 'CAN_QUERY'
+
+  - name: 'mas-supervisor'
+    description: 'Multi-Agent Supervisor - Genie + KA'
+    serving_endpoint:
+      name: 'mas-3754ad3f-endpoint'
+      permission: 'CAN_QUERY'

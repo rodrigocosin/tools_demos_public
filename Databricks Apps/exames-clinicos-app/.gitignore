@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+node_modules/
+npm-debug.log*
+.idea/
+.vscode/
+*.swp
+.databricks/
+.DS_Store
+sample_pdfs/
+setup_tables.py
+generate_pdfs.py

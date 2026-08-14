@@ -1,0 +1,13 @@
+command:
+  - uvicorn
+  - app.main:app
+  - --host
+  - 0.0.0.0
+  - --port
+  - "8000"
+
+env:
+  - name: SQL_WAREHOUSE_HTTP_PATH
+    value: "/sql/1.0/warehouses/0c2def7684630e5e"
+  - name: RULES_TABLE
+    value: "cosin_aws_serverless_catalog.pr_review.tb_validacao_regras"

@@ -1,0 +1,56 @@
+{
+  "name": "blog_send_semanal",
+  "tags": { "projeto": "databricks_blog_digest" },
+  "max_concurrent_runs": 1,
+  "tasks": [
+    {
+      "task_key": "preparar_email",
+      "description": "Atualiza o assunto (data do envio) e o corpo (cards) do Legacy SQL alert; expoe a contagem de pendentes",
+      "notebook_task": {
+        "notebook_path": "/Workspace/Users/rodrigo.cosin@databricks.com/tools_demos_public/blog_digest/00_preparar_email",
+        "source": "WORKSPACE"
+      }
+    },
+    {
+      "task_key": "tem_conteudo",
+      "description": "So segue para o envio se houver posts pendentes (weekly_sent=false)",
+      "depends_on": [ { "task_key": "preparar_email" } ],
+      "condition_task": {
+        "op": "GREATER_THAN",
+        "left": "{{tasks.preparar_email.values.pendentes}}",
+        "right": "0"
+      }
+    },
+    {
+      "task_key": "enviar_lotes",
+      "description": "Envia o digest em LOTES (contorna limite do alerta) e registra cada lote em send_log",
+      "depends_on": [ { "task_key": "tem_conteudo", "outcome": "true" } ],
+      "notebook_task": {
+        "notebook_path": "/Workspace/Users/rodrigo.cosin@databricks.com/tools_demos_public/blog_digest/04_enviar_lotes",
+        "source": "WORKSPACE",
+        "base_parameters": {
+          "alert_id": "b5a63e41-6b3e-4cd7-aaa9-eb55701d95a5",
+          "warehouse_id": "0c2def7684630e5e",
+          "sa_filter": "Rodrigo Cosin",
+          "batch_size": "10",
+          "pause_seconds": "20"
+        }
+      }
+    },
+    {
+      "task_key": "marcar_enviados",
+      "description": "Marca como sent os posts que acabaram de ser enviados",
+      "depends_on": [ { "task_key": "enviar_lotes" } ],
+      "notebook_task": {
+        "notebook_path": "/Workspace/Users/rodrigo.cosin@databricks.com/tools_demos_public/blog_digest/03_weekly_log",
+        "source": "WORKSPACE"
+      }
+    }
+  ],
+  "schedule": {
+    "quartz_cron_expression": "0 0 10 ? * FRI",
+    "timezone_id": "America/Sao_Paulo",
+    "pause_status": "UNPAUSED"
+  },
+  "queue": { "enabled": true }
+}

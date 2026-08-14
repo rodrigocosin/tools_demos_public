@@ -1,0 +1,31 @@
+{
+  "name": "blog_digest_diario",
+  "tags": { "projeto": "databricks_blog_digest" },
+  "max_concurrent_runs": 1,
+  "tasks": [
+    {
+      "task_key": "ingest_and_summarize",
+      "description": "Scrape do blog, carga incremental e resumo PT-BR via LLM",
+      "notebook_task": {
+        "notebook_path": "/Workspace/Users/rodrigo.cosin@databricks.com/tools_demos_public/blog_digest/01_ingest_and_summarize",
+        "source": "WORKSPACE"
+      }
+    },
+    {
+      "task_key": "sync_recipients",
+      "description": "Mantem 1 Notification Destination por destinatario ativo e atualiza as subscriptions do job de envio (pre-staging para sexta)",
+      "depends_on": [ { "task_key": "ingest_and_summarize" } ],
+      "notebook_task": {
+        "notebook_path": "/Workspace/Users/rodrigo.cosin@databricks.com/tools_demos_public/blog_digest/02_sync_recipients",
+        "source": "WORKSPACE",
+        "base_parameters": { "weekly_job_id": "696804447163687", "enviar_task_key": "enviar_digest", "sa_filter": "Rodrigo Cosin" }
+      }
+    }
+  ],
+  "schedule": {
+    "quartz_cron_expression": "0 0 8 * * ?",
+    "timezone_id": "America/Sao_Paulo",
+    "pause_status": "UNPAUSED"
+  },
+  "queue": { "enabled": true }
+}
