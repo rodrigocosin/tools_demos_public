@@ -340,7 +340,8 @@
             <tbody>
               <tr><td><strong>Genie Code</strong></td><td>Assistente <strong>de código/dados agêntico</strong> (foco deste guia)</td><td>Engenheiros, cientistas de dados, analistas técnicos</td></tr>
               <tr><td><strong>Genie One</strong></td><td>Experiência conversacional para <strong>usuários de negócio</strong> perguntarem sobre dados em linguagem natural</td><td>Usuários de negócio</td></tr>
-              <tr><td><strong>Genie Agents (antigo Salas Genie)</strong></td><td>Perguntas em linguagem natural sobre um conjunto curado de tabelas. Ambientes de domínio com dados/métricas/regras curados que <strong>alimentam o Genie One</strong></td><td>Times de dados que curam contexto e Analistas de negócio</td></tr>
+              <tr><td><strong>Genie Agents</strong></td><td>Ambientes de domínio com dados/métricas/regras curados que <strong>alimentam o Genie One</strong></td><td>Times de dados que curam contexto</td></tr>
+              <tr><td><strong>AI/BI Genie Spaces</strong></td><td>Perguntas em linguagem natural sobre um conjunto curado de tabelas/dashboards</td><td>Analistas e negócio</td></tr>
               <tr><td><strong>Databricks Assistant</strong></td><td><strong>Nome anterior</strong> do Genie Code</td><td>—</td></tr>
             </tbody>
           </table>
@@ -418,6 +419,7 @@
               <tr><td>Codificar convenções <strong>uma vez</strong> em Workspace Instructions / Skills / <code>AGENTS.md</code></td><td>Recolar padrões e contexto a cada prompt</td></tr>
               <tr><td>Usar <strong>slash commands</strong> (<code>/fix</code>, <code>/optimize</code>, <code>/explain</code>, <code>/doc</code>)</td><td>Descrever a mesma tarefa em parágrafos longos</td></tr>
               <tr><td>Apontar <strong><code>@tabela</code></strong> e <strong><code>@skill-name</code></strong> exatos</td><td>Deixar o agente adivinhar/buscar (gera tool calls extras)</td></tr>
+              <tr><td><strong>Documentar tabelas/colunas no Unity Catalog</strong> (comentários, com exemplo de dado)</td><td>Deixar o agente inferir schema/semântica (gera buscas e erros)</td></tr>
               <tr><td>Dar objetivo específico + tabelas/colunas <strong>já no 1º prompt</strong></td><td>Prompt vago que gera várias rodadas de esclarecimento</td></tr>
               <tr><td>Pedir <em>"só explique, não rode código"</em> quando não precisa executar</td><td>Deixar o Agent mode planejar/rodar/ler resultados à toa</td></tr>
               <tr><td>Skills <strong>enxutas e focadas</strong> (só o essencial) com boa <code>description</code></td><td>Skills gigantes/genéricas que inflam o contexto sempre</td></tr>
@@ -425,8 +427,13 @@
               <tr><td>Tarefas <strong>pequenas e revisáveis</strong> (usar diffs e Accept/Reject cedo)</td><td>Mega-prompt que roda muito e gera retrabalho caro</td></tr>
               <tr><td><strong>Quick Fix</strong> para correção de 1 linha</td><td>Reabrir chat e reprompt longo por um typo</td></tr>
               <tr><td>Continuar no <strong>mesmo chat</strong> com contexto já carregado para tarefa relacionada</td><td>Reexplicar todo o contexto num chat novo do zero</td></tr>
+              <tr><td><strong>Abrir um chat novo ao trocar de assunto</strong> — o cache reaproveitado deixa de valer</td><td>Seguir no <strong>mesmo chat após mudar de assunto</strong>: relê um histórico irrelevante a cada pergunta e <strong>custa mais do que um chat novo</strong> (ver 3.4)</td></tr>
             </tbody>
           </table>
+        </div>
+        <div class="callout tip">
+          <span class="c-tag">Contexto de dados = economia</span>
+          <p>Documentar <strong>tabelas e colunas no Unity Catalog</strong> — inclusive com <strong>exemplos de dado no comentário da coluna</strong> (ex.: coluna <code>height</code> <em>"em formato texto, separada por hífen. Exemplo: '6-2'"</em>) — faz o Genie Code entender o schema <strong>de primeira</strong>, sem "adivinhar" nem disparar buscas extras. Uma consulta inicial como <code>SELECT * FROM &lt;tabela&gt;</code> também ajuda o agente a identificar colunas corretamente.</p>
         </div>
         <div class="callout tip">
           <span class="c-tag">3 regras de bolso</span>
@@ -438,7 +445,24 @@
         </div>
         <div class="callout note">
           <span class="c-tag">Três camadas de economia</span>
-          <p><strong>Individual</strong> (prompts enxutos, slash commands, <code>@</code>) + <strong>estrutural</strong> (skills e instruções que evitam repetição para o time inteiro) + <strong>governança</strong> (budgets e monitoramento por usuário — seção 4). A maior economia sustentável vem da camada <strong>estrutural</strong>: uma boa skill economiza tokens de <em>todo mundo</em>, todo dia.</p>
+          <p><strong>Individual</strong> (prompts enxutos, slash commands, <code>@</code>, higiene de sessão) + <strong>estrutural</strong> (skills e instruções que evitam repetição para o time inteiro) + <strong>governança</strong> (budgets e monitoramento por usuário — seção 4). A maior economia sustentável vem da camada <strong>estrutural</strong>: uma boa skill economiza tokens de <em>todo mundo</em>, todo dia.</p>
+        </div>
+
+        <h3 id="higiene-sessao">3.4 · Higiene de sessão: chats muito longos encarecem cada pergunta</h3>
+        <p>Uma <strong>boa prática</strong> de economia — derivada de como a cobrança funciona, e não de uma recomendação explícita da Databricks — é <strong>não manter uma única sessão longa quando o assunto muda</strong>.</p>
+        <p><strong>Por quê.</strong> O Genie Code é cobrado por <strong>input tokens</strong>, e cada nova pergunta reenvia o <strong>prompt + todo o histórico da conversa</strong> como entrada. Conforme o chat cresce, o histórico acumulado é reprocessado a cada pergunta — então o <strong>custo por pergunta tende a subir ao longo de uma sessão longa</strong>.</p>
+        <p>O <strong>prompt caching</strong> — documentado na FM API reference para modelos Claude hospedados pela Databricks, via os campos <code>cache_creation_input_tokens</code> (gravar no cache) e <code>cache_read_input_tokens</code> (reler do cache) — <strong>atenua</strong> isso: o histórico é gravado uma vez (<em>cache creation</em>) e nas perguntas seguintes é apenas <strong>relido</strong> (<em>cache read</em>, mais barato). Duas consequências:</p>
+        <ul>
+          <li>A <strong>1ª pergunta</strong> de uma sessão tende a ser a mais cara por pergunta, porque paga a <strong>criação</strong> do cache.</li>
+          <li>Como o histórico <strong>acumula</strong>, o volume relido cresce a cada pergunta — então, em sessões muito longas, o custo por pergunta <strong>volta a subir</strong>, mesmo com o cache ativo.</li>
+        </ul>
+        <div class="callout note">
+          <span class="c-tag">O cache não é o vilão</span>
+          <p>Ele <em>reduz</em> o custo de continuar no mesmo chat. O que encarece é o <strong>histórico acumulado</strong> sendo relido a cada pergunta. Por isso o "mesmo chat" é econômico <strong>enquanto o assunto for o mesmo</strong>; quando o assunto muda, o histórico antigo vira contexto irrelevante que você segue pagando para reler.</p>
+        </div>
+        <div class="callout tip">
+          <span class="c-tag">Regra prática</span>
+          <p>Trate <strong>um chat = uma tarefa/assunto</strong>. Ao <strong>mudar de assunto, abra um chat novo</strong> em vez de seguir no mesmo — assim o agente não relê um histórico que não interessa mais. Quebre trabalhos longos em sessões menores e focadas.</p>
         </div>
       </section>
 
@@ -469,10 +493,10 @@
           <table>
             <thead><tr><th>Modo</th><th>Comportamento</th></tr></thead>
             <tbody>
-              <tr><td><strong>Ask every time</strong> (padrão)</td><td>Pede permissão a cada ação (<strong>Allow</strong> / <strong>Skip</strong>)</td></tr>
+              <tr><td><strong>Ask every time</strong></td><td>Pede permissão a cada ação (<strong>Allow</strong> / <strong>Skip</strong>)</td></tr>
               <tr><td><strong>Allow in current chat</strong></td><td>Libera a ferramenta pelo resto da sessão</td></tr>
               <tr><td><strong>Always allow</strong></td><td>Libera em todos os chats futuros</td></tr>
-              <tr><td><strong>Auto-approve</strong></td><td>Um classificador de IA revisa cada ação e bloqueia as arriscadas</td></tr>
+              <tr><td><strong>Auto-approve</strong> (padrão de fábrica, rotulado "Recommended")</td><td>Um classificador de IA verifica cada ação contra o seu pedido e <strong>bloqueia o que estiver fora do escopo</strong> (ex.: dropar uma tabela não mencionada, adicionar <code>CASCADE</code> a um <code>DROP</code>, ou afetar recursos compartilhados)</td></tr>
             </tbody>
           </table>
         </div>
@@ -480,10 +504,10 @@
           <span class="c-tag">⚠ Aviso de segurança oficial</span>
           <p><em>"Auto-approve é um recurso de produtividade, não uma fronteira de segurança."</em> O classificador pode aprovar ações inseguras ou bloquear ações seguras por engano. <strong>Mantenha o Auto-approve DESLIGADO</strong> ao lidar com <strong>dados de produção, workspaces sensíveis ou recursos compartilhados.</strong></p>
         </div>
-        <p>Cada usuário define seu próprio padrão de aprovação em <strong>Settings → Genie Code → Actions</strong>, escolhendo entre os modos da tabela acima. O padrão de fábrica já é <strong>Ask every time</strong> (rotulado como "Ask first" na UI de Settings).</p>
+        <p>Cada usuário define seu próprio modo de aprovação clicando no <strong>ícone de engrenagem no cabeçalho do painel do Genie Code</strong> e escolhendo entre os modos da tabela acima. <strong>⚠ Atenção: o padrão de fábrica é <code>Auto-approve</code></strong> (a UI o exibe com a etiqueta "Recommended"). Ou seja, quem usa o Genie Code pela primeira vez começa no modo mais autônomo — o comportamento conservador <strong>não</strong> vem ativo por padrão e precisa ser configurado manualmente.</p>
         <div class="callout note">
           <span class="c-tag">Recomendação de rollout</span>
-          <p>Oriente o time (em treinamento e nas Workspace Instructions) a <strong>manter "Ask every time"</strong> e a <strong>só habilitar Auto-approve em dados não-produtivos, caso a caso</strong>. Como não há um toggle de admin que force esse padrão para todos, trate isso como política de uso reforçada por treinamento — o controle <em>técnico</em> de custo/risco vem dos <strong>budgets</strong> e das <strong>permissões do Unity Catalog</strong>.</p>
+          <p>Oriente o time (em treinamento e nas Workspace Instructions) a <strong>alterar o modo de <code>Auto-approve</code> para "Ask every time"</strong> e a <strong>só reabilitar Auto-approve em dados não-produtivos, caso a caso</strong>. Não se deixe enganar pelo rótulo "Recommended" da UI: ele é uma recomendação de <em>produtividade geral</em>, não de segurança. Como não há um toggle de admin que force o modo para todos, trate isso como política de uso reforçada por treinamento — o controle <em>técnico</em> de custo/risco vem dos <strong>budgets</strong> e das <strong>permissões do Unity Catalog</strong>.</p>
         </div>
 
         <h3>4.4 · Orçamentos (budgets) — o freio de custo</h3>
@@ -525,7 +549,7 @@
           <li><code>identity_metadata.run_as</code> — usuário que rodou</li>
         </ul>
         <ul>
-          <li>O SKU <strong><code>GENIE_FREE_USAGE</code></strong> rastreia todo o uso grátis (franquia + promoção); <strong>não tem list price</strong>. Disponível a partir de <strong>20/07/2026</strong>.</li>
+          <li>O SKU <strong><code>GENIE_FREE_USAGE</code></strong> rastreia todo o uso grátis: a <strong>franquia de 150 DBU/usuário</strong> e o <strong>uso gratuito de Genie One e Genie Agents</strong> (grátis até 31/01/2027). <strong>Não tem list price</strong>. Disponível a partir de <strong>20/07/2026</strong>. O desconto de 25% do Genie Code <strong>não</strong> entra aqui — é aplicado direto no metering do SKU pago.</li>
           <li>O uso cobrado usa o SKU <strong>Serverless Real-Time Inference</strong> (varia por região).</li>
         </ul>
         <div class="callout tip">
@@ -580,7 +604,7 @@
         <p><strong>Boas práticas com diff:</strong> <code>/fix</code> e <code>/doc</code> mostram as mudanças em <strong>janela de diff</strong> com <strong>Accept/Reject</strong>. Código aceito <strong>não roda automaticamente</strong> — revise antes de executar.</p>
 
         <h3>5.3 · Referências com <code>@</code> (menções)</h3>
-        <p>Use o símbolo <strong><code>@</code></strong> (ou o ícone dedicado) para apontar exatamente os recursos que o Genie Code deve considerar: <strong>tabelas</strong>, <strong>skills</strong> e outros ativos do workspace.</p>
+        <p>Use o símbolo <strong><code>@</code></strong> (ou o botão <strong>Add Context</strong>) para apontar exatamente os recursos que o Genie Code deve considerar: <strong>tabelas</strong>, <strong>skills</strong> e outros ativos do workspace. Em notebooks, você também pode referenciar <strong>células específicas</strong> com <strong><code>@cell</code></strong> (ou via <strong>Add Context</strong>) para discutir apenas aquele trecho.</p>
         <div class="callout tip">
           <span class="c-tag">Economia</span>
           <p>Citar <code>@tabela</code> correta evita que o agente "adivinhe" ou faça buscas extras — menos idas e voltas, menos DBU. Da mesma forma, <code>@skill-name</code> invoca uma skill sob demanda.</p>
@@ -639,7 +663,7 @@
           <p>As instruções valem para <strong>Inline Genie Code</strong>, <strong>General Chat</strong> e <strong>Suggest Fix</strong>. <strong>Quick Fix e Autocomplete NÃO consideram as instruções</strong> — são exceções.</p>
         </div>
         <ul>
-          <li><strong>Limite recomendado: menos de 20.000 caracteres.</strong> Use Markdown com títulos e bullets, linguagem explícita e <strong>inclua o contexto essencial diretamente</strong>. O Genie Code busca automaticamente a <strong>documentação Databricks</strong> (e, onde habilitado, faz web search em Beta), mas <strong>não conte com lookups externos</strong> para preencher lacunas das suas instruções — o que for crítico deve estar nas instruções, nas skills ou disponível via MCP.</li>
+          <li><strong>Limite rígido: 20.000 caracteres — o Genie Code ignora tudo o que passar desse limite.</strong> Use Markdown com títulos e bullets (o doc oficial sugere bullets como delimitadores para separar instruções distintas), linguagem explícita e <strong>inclua o contexto essencial diretamente</strong>. O Genie Code busca automaticamente a <strong>documentação Databricks</strong> (e, onde habilitado, faz web search em Beta), mas <strong>não conte com lookups externos</strong> para preencher lacunas das suas instruções — o que for crítico deve estar nas instruções, nas skills ou disponível via MCP.</li>
         </ul>
 
         <h3>6.2 · Skills — o mecanismo de padronização reutilizável</h3>
@@ -676,7 +700,7 @@ description: O que a skill faz e QUANDO usá-la.
         <ul>
           <li><strong>Automática:</strong> o Genie Code carrega skills relevantes com base no pedido e na <code>description</code>.</li>
           <li><strong>Manual:</strong> invoque explicitamente com <strong><code>@nome-da-skill</code></strong>.</li>
-          <li><strong>Ativação:</strong> skills novas/alteradas são detectadas no próximo uso. Se metadados ficarem em cache, faça <strong>hard-refresh</strong> da aba.</li>
+          <li><strong>Ativação:</strong> skills relevantes são carregadas no próximo uso. <strong>Ao editar uma skill existente, abra um chat novo para aplicar as mudanças — edições não têm efeito em chats já ativos.</strong> Se os metadados ficarem em cache, faça <strong>hard-refresh</strong> da aba.</li>
         </ul>
         <h4>Boas práticas de autoria</h4>
         <ul>
@@ -745,7 +769,7 @@ databricks aitools install --skills bundles,sql  <span class="cmt"># skills espe
               <tr><td><strong>Dê contexto rico, não repita</strong></td><td>Codifique contexto em <strong>Workspace Instructions</strong>, <strong>AGENTS.md/CLAUDE.md</strong> e <strong>Skills</strong> — não cole tudo no prompt</td></tr>
               <tr><td><strong>Seja específico sobre o alvo</strong></td><td>Use <code>@tabela</code> e <code>@skill-name</code> em vez de descrições ambíguas</td></tr>
               <tr><td><strong>Passos pequenos e revisáveis</strong></td><td>Aproveite os <strong>diffs</strong> de <code>/fix</code> e <code>/doc</code> e o <strong>Accept/Reject</strong>; código aceito <strong>não roda sozinho</strong></td></tr>
-              <tr><td><strong>Mantenha o humano no controle</strong></td><td>Mantenha o padrão <strong>"Ask every time"</strong>; evite Auto-approve em dados de produção</td></tr>
+              <tr><td><strong>Mantenha o humano no controle</strong></td><td><strong>Altere o padrão de fábrica (<code>Auto-approve</code>) para "Ask every time"</strong>; evite Auto-approve em dados de produção</td></tr>
               <tr><td><strong>Itere com feedback do agente</strong></td><td>Deixe o <strong>Agent mode</strong> planejar e diagnosticar erros, mas <strong>revise</strong> cada passo consequente</td></tr>
               <tr><td><strong>Padronize saídas entre pessoas</strong></td><td><strong>Workspace Skills</strong> garantem que todo o time gere código no mesmo padrão</td></tr>
               <tr><td><strong>Não peça o que viola permissões</strong></td><td>O agente respeita <strong>Unity Catalog</strong>; modele permissões antes, não depois</td></tr>
@@ -774,7 +798,7 @@ databricks aitools install --skills bundles,sql  <span class="cmt"># skills espe
         <ol>
           <li>Configure <strong>partner-powered AI features</strong> (conta + workspace) conforme requisitos de geografia/DLP.</li>
           <li>Garanta <strong>Unity Catalog</strong> com <strong>least privilege</strong>; revise ACLs de workspace.</li>
-          <li>Defina a <strong>política de aprovação</strong>: oriente todos a manter <strong>"Ask every time"</strong> (padrão de fábrica) e a restringir Auto-approve a dados não-produtivos. Reforce em treinamento e nas Workspace Instructions (não há toggle de admin que force isso).</li>
+          <li>Defina a <strong>política de aprovação</strong>: como o <strong>padrão de fábrica é <code>Auto-approve</code></strong>, oriente todos a <strong>alterar para "Ask every time"</strong> (ícone de engrenagem no cabeçalho do painel do Genie Code) e a restringir Auto-approve a dados não-produtivos. Reforce em treinamento e nas Workspace Instructions (não há toggle de admin que force isso).</li>
           <li>Configure <strong>budgets</strong> (Unity AI Gateway, tag <code>databricks-product:genie</code>): alertas no nível <strong>shared</strong>, bloqueio via <strong>per-user thresholds</strong>.</li>
           <li>Suba um <strong>dashboard de FinOps</strong> sobre <code>system.billing.usage</code> (filtro <code>GENIE_CODE</code>, por usuário/dia).</li>
         </ol>
@@ -817,6 +841,7 @@ databricks aitools install --skills bundles,sql  <span class="cmt"># skills espe
             <li><strong>Adicionar tags extras no budget do Genie.</strong> Quebra o rastreamento (use <strong>apenas</strong> <code>databricks-product:genie</code>).</li>
             <li><strong>Esperar que o agente busque contexto externo sozinho</strong> para lacunas das instruções. Forneça via instruções, skills ou MCP.</li>
             <li><strong>Não versionar instruções/skills.</strong> Sem Git folders, você perde histórico e revisão.</li>
+            <li><strong>Manter uma sessão gigante para vários assuntos.</strong> O histórico acumulado é relido a cada pergunta e encarece todas — ao trocar de assunto, abra um chat novo e quebre trabalhos longos em sessões menores (ver 3.4).</li>
           </ul>
         </div>
       </section>
@@ -829,7 +854,7 @@ databricks aitools install --skills bundles,sql  <span class="cmt"># skills espe
         <ul class="check">
           <li>Partner-powered AI features decididos e configurados (conta + workspace)</li>
           <li>Unity Catalog com least privilege revisado</li>
-          <li>Política de aprovação comunicada: manter "Ask every time"; Auto-approve só em dados não-produtivos (reforçado em treinamento)</li>
+          <li>Política de aprovação comunicada: <strong>alterar de Auto-approve (padrão de fábrica) para "Ask every time"</strong>; Auto-approve só em dados não-produtivos (reforçado em treinamento)</li>
           <li>Budget criado (Unity AI Gateway, tag <code>databricks-product:genie</code>, só essa tag)</li>
           <li>Alertas (shared) + bloqueio (per-user) configurados</li>
           <li>Dashboard FinOps sobre <code>system.billing.usage</code> publicado</li>
@@ -842,9 +867,10 @@ databricks aitools install --skills bundles,sql  <span class="cmt"># skills espe
           <li>Sei usar <code>/explain</code>, <code>/fix</code>, <code>/doc</code>, <code>/optimize</code>, <code>/findTables</code></li>
           <li>Uso <code>@tabela</code> e <code>@skill-name</code> em vez de descrições vagas</li>
           <li>Reviso diffs (Accept/Reject) antes de executar</li>
-          <li>Mantenho "Ask every time" em dados de produção</li>
+          <li>Alterei o modo para "Ask every time" (o padrão de fábrica é Auto-approve) em dados de produção</li>
           <li>Invoco skills do workspace em vez de recolar padrões</li>
           <li>Acompanho meu consumo de DBU vs. franquia de 150</li>
+          <li>Abro um chat novo ao trocar de assunto (não acumulo uma sessão gigante para vários temas)</li>
         </ul>
       </section>
 
@@ -863,6 +889,7 @@ databricks aitools install --skills bundles,sql  <span class="cmt"># skills espe
           <li><strong>Conectar MCP servers:</strong> <a href="https://docs.databricks.com/aws/en/genie-code/mcp">genie-code/mcp</a></li>
           <li><strong>Monitorar custo do Genie:</strong> <a href="https://docs.databricks.com/aws/en/genie/monitor-cost">genie/monitor-cost</a></li>
           <li><strong>Budgets do Genie:</strong> <a href="https://docs.databricks.com/aws/en/genie/budgets">genie/budgets</a></li>
+          <li><strong>FM API reference (input tokens + campos de prompt caching <code>cache_creation_input_tokens</code> / <code>cache_read_input_tokens</code>):</strong> <a href="https://docs.databricks.com/aws/en/machine-learning/foundation-model-apis/api-reference">foundation-model-apis/api-reference</a></li>
           <li><strong>Dashboard pronto de observabilidade de consumo do Genie (system tables, inclui Genie Code):</strong> <a href="https://github.com/databricks/tmm/tree/main/System-Tables-Demo/Genie-Observability">github.com/databricks/tmm · Genie-Observability</a></li>
           <li><strong>Genie Code para data science:</strong> <a href="https://docs.databricks.com/aws/en/notebooks/ds-agent">notebooks/ds-agent</a></li>
           <li><strong>Genie Code para pipelines (Lakeflow):</strong> <a href="https://docs.databricks.com/aws/en/ldp/de-agent">ldp/de-agent</a></li>
