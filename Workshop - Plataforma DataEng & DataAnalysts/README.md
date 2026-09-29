@@ -62,9 +62,9 @@ Workshop - Plataforma DataEng & DataAnalysts/
 3. Clique em **⚙️** (kebab menu) > **Create** > **Git Folder**
 4. Cole a URL do repositório Git:
    ```
-   <URL_DO_REPOSITORIO_GIT>
+   https://github.com/rodrigocosin/tools_demos_public
    ```
-5. Escolha o branch (ex: `main`) e clique em **Create Git Folder**
+5. Escolha o branch `main` e clique em **Create Git Folder**
 6. Aguarde a clonagem — todos os notebooks e CSVs serão importados automaticamente
 
 > 💡 **Alternativa:** Se não usar Git, você pode importar os notebooks manualmente via **Import** na pasta de destino.
